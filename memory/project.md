@@ -1,0 +1,2 @@
+- Flora is a private local LLM
+- Memory is external and curated
