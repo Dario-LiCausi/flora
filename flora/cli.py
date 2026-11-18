@@ -40,8 +40,9 @@ def cmd_task(cfg: Config, a) -> int:
         print("error: no text (give text, --file, or pipe it in)", file=sys.stderr)
         return 2
     fields = [f.strip() for f in a.fields.split(",") if f.strip()] if a.fields else None
-    prompt = tasks.build_prompt(a.name, text, fields)
-    result = tasks.validate(a.name, text, client.generate(cfg, prompt, temperature=0.2), fields)
+    style = memory.read_regular(Path(a.style_file), 20_000) if a.style_file else None
+    prompt = tasks.build_prompt(a.name, text, fields, style)
+    result = tasks.validate(a.name, text, client.generate(cfg, prompt, temperature=0.7 if a.name == "copy" else 0.2), fields, style)
     print(result.output)
     for p in result.problems:
         print(f"check failed: {p}", file=sys.stderr)
@@ -134,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("name", choices=sorted(tasks.TASKS))
     p.add_argument("--fields", help="for extract: comma separated keys")
     p.add_argument("--file")
+    p.add_argument("--style-file", help="for copy: a text file with style examples (used as data, never copied)")
     p.add_argument("text", nargs="*")
     p = sub.add_parser("memory", help="show memory and manage proposals (nothing changes without approval)")
     m = p.add_subparsers(dest="mcmd", required=True)

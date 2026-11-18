@@ -25,7 +25,7 @@ Python 3.9+ standard library only. No packages to install.
 | Command | What it does |
 |---|---|
 | `flora ask [--no-memory] "text"` | One question. Prompt can also come from a pipe. |
-| `flora task summarise\|tidy\|ste\|extract "text"` | A small text job with a fixed prompt **and an output check**. Exit code 3 if the output fails its check. `extract` needs `--fields a,b,c` and must return exactly those JSON keys. |
+| `flora task summarise\|tidy\|ste\|extract\|copy "text"` | A small text job with a fixed prompt **and an output check**. Exit code 3 if the output fails its check. `extract` needs `--fields a,b,c` and must return exactly those JSON keys. `copy` writes 3 to 8 short options for a brief; with `--style-file examples.txt` it imitates the style of your examples and **fails the check if it copies 6 or more words in a row**. |
 | `flora memory show\|list` | Show memory (capped) or the pending proposals. |
 | `flora memory propose <target> "fact"` | Queue a memory change. **Nothing is written yet.** |
 | `flora memory draft "what happened"` | Ask the model to draft one entry. It is saved as *pending*; the model never approves its own draft. |
@@ -70,14 +70,14 @@ Flora handles small text jobs (short drafts, tidy-ups, extracting fields) next t
 
 ## Tests
 ```bash
-python3 -m unittest discover -s tests   # 39 tests; a stub server plays Ollama, no model needed
+python3 -m unittest discover -s tests   # 44 tests; a stub server plays Ollama, no model needed
 bash tests/test_run_flora.sh            # shell wrapper tests
 bin/flora eval                          # live check against your model (needs Ollama)
 ```
 Live result on 2026-11-18 with `llama3.2:3b`: 6 of 6 evaluation cases passed (results vary by model and run).
 
 ## Status and roadmap
-v0.2: command line, four checked text jobs, approval-based memory, audit log, evaluation cases, CI.
+v0.2: command line, five checked text jobs (including copywriting with a no-copying check), approval-based memory, audit log, evaluation cases, CI.
 Next: more evaluation cases (long inputs, other languages), a small review screen for pending memory proposals,
 and fine-tuning experiments on a small base model.
 
