@@ -15,16 +15,32 @@ It has a fixed identity, reads its memory from plain files, and never acts on it
 
 ## Quick start
 ```bash
-# 1. Install Ollama and pull a base model (a small one is enough)
-ollama pull llama3.2:3b
-# 2. Build the Flora model on that base
-scripts/build_model.sh llama3.2:3b
-# 3. Ask Flora something (memory from ./memory is added automatically)
-scripts/run_flora.sh "Summarise these notes in three bullets: ..."
-scripts/run_flora.sh --no-memory "Plain question with no memory"
-echo "text from a pipe" | scripts/run_flora.sh --no-memory
+ollama pull llama3.2:3b                  # any small base model works
+scripts/build_model.sh llama3.2:3b       # builds the "flora" model (fixed identity + rules)
+bin/flora ask "Who are you?"             # memory from ./memory is added as labelled data
 ```
-Environment: `FLORA_MODEL` (model name), `FLORA_MEMORY_DIR`, `FLORA_MAX_MEMORY_CHARS` (default 8000).
+Python 3.9+ standard library only. No packages to install.
+
+## Commands
+| Command | What it does |
+|---|---|
+| `flora ask [--no-memory] "text"` | One question. Prompt can also come from a pipe. |
+| `flora task summarise\|tidy\|ste\|extract "text"` | A small text job with a fixed prompt **and an output check**. Exit code 3 if the output fails its check. `extract` needs `--fields a,b,c` and must return exactly those JSON keys. |
+| `flora memory show\|list` | Show memory (capped) or the pending proposals. |
+| `flora memory propose <target> "fact"` | Queue a memory change. **Nothing is written yet.** |
+| `flora memory draft "what happened"` | Ask the model to draft one entry. It is saved as *pending*; the model never approves its own draft. |
+| `flora memory approve <id> --yes` / `reject <id>` | The only way memory changes. Appends one line and writes an audit entry (the log records what happened, never the text). |
+| `flora eval` | Runs `evals/cases.json` against the live model (concise output, ignores instructions hidden in the text, valid JSON, keeps unknown things unknown). |
+
+Examples:
+```bash
+cat notes.txt | bin/flora task summarise            # at most 3 bullets, at most 80 words
+bin/flora task ste "Prior to commencement of the procedure, ensure that the power is disconnected."
+bin/flora task extract --fields name,date,amount "Invoice from Acme Ltd dated 3 March 2026 for 120 pounds."
+bin/flora memory propose preferences "Prefers short answers" && bin/flora memory list
+```
+Environment: `FLORA_MODEL`, `FLORA_MEMORY_DIR`, `FLORA_HOST` (must be local; remote needs `FLORA_ALLOW_REMOTE=1`), `FLORA_MAX_MEMORY_CHARS`, `FLORA_TIMEOUT`.
+The older shell wrapper `scripts/run_flora.sh` still works for interactive use.
 
 ## Layout
 | Path | What |
@@ -32,7 +48,9 @@ Environment: `FLORA_MODEL` (model name), `FLORA_MEMORY_DIR`, `FLORA_MAX_MEMORY_C
 | `models/Modelfile` | Fixed identity, behaviour rules, memory-write protocol, model settings |
 | `prompts/` | The system prompt and the memory-loader text (readable copies) |
 | `memory/` | Core identity, user preferences, project notes (Markdown, read-only at run time) |
-| `scripts/run_flora.sh` | Wrapper: injects memory as labelled data, with a size cap |
+| `flora/` | The Python package: `client` (local Ollama call), `memory` (load, propose, approve), `tasks` (jobs + output checks), `cli` |
+| `evals/cases.json` | Evaluation cases for `flora eval` |
+| `scripts/run_flora.sh` | Shell wrapper: injects memory as labelled data, with a size cap |
 | `scripts/build_model.sh` | Builds the Ollama model on a base model you choose |
 | `tests/` | Shell tests using a stub `ollama` (no model needed). CI runs them with shellcheck |
 
@@ -48,13 +66,16 @@ Flora handles small text jobs (short drafts, tidy-ups, extracting fields) next t
 
 ## Tests
 ```bash
-bash tests/test_run_flora.sh      # 13 checks, stub ollama
-shellcheck scripts/*.sh tests/*.sh
+python3 -m unittest discover -s tests   # 24 tests; a stub server plays Ollama, no model needed
+bash tests/test_run_flora.sh            # shell wrapper tests
+bin/flora eval                          # live check against your model (needs Ollama)
 ```
+Live result on 2026-11-18 with `llama3.2:3b`: 6 of 6 evaluation cases passed (results vary by model and run).
 
 ## Status and roadmap
-Foundation, wrapper and tests are done. Next: a small set of evaluation prompts (does it stay concise, does it refuse to invent memory),
-and an example memory-update review flow.
+v0.2: command line, four checked text jobs, approval-based memory, audit log, evaluation cases, CI.
+Next: more evaluation cases (long inputs, other languages), a small review screen for pending memory proposals,
+and fine-tuning experiments on a small base model.
 
 ## Licence
 MIT
