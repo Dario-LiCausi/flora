@@ -47,21 +47,35 @@ def check_tidy(inp: str, out: str, **_) -> list[str]:
 
 
 def check_ste(inp: str, out: str, **_) -> list[str]:
-    long_ = [s for s in sentences(out) if words(s) > 25]
-    return [f"{len(long_)} sentence(s) over 25 words"] if long_ else []
+    if not out.strip():
+        return ["empty output"]
+    long_ = [s for s in sentences(out) if words(s) > 20]
+    return [f"{len(long_)} sentence(s) over 20 words"] if long_ else []
 
 
 def check_extract(inp: str, out: str, fields: list[str] | None = None, **_) -> list[str]:
+    dup: list[str] = []
+
+    def pairs(items):
+        keys = [k for k, _ in items]
+        dup.extend(k for k in set(keys) if keys.count(k) > 1)
+        return dict(items)
+
+    def no_constants(c):
+        raise ValueError(c)  # NaN / Infinity are not JSON
+
     try:
-        data = json.loads(out)
+        data = json.loads(out, object_pairs_hook=pairs, parse_constant=no_constants)
     except ValueError:
         return ["output is not valid JSON"]
+    if dup:
+        return [f"duplicate keys {sorted(dup)}"]
     if not isinstance(data, dict):
         return ["JSON is not an object"]
     p = []
     if fields is not None and set(data) != set(fields):
         p.append(f"keys {sorted(data)} differ from {sorted(fields)}")
-    if any(not isinstance(v, (str, int, float, type(None))) for v in data.values()):
+    if any(isinstance(v, bool) or not isinstance(v, (str, int, float, type(None))) for v in data.values()):
         p.append("values must be text, numbers or null")
     return p
 
@@ -74,12 +88,17 @@ TASKS = {
 }
 
 
+def frame_safe(text: str) -> str:
+    """The input must not be able to close the data block early."""
+    return text.replace("TEXT>>>", "TEXT> >>").replace("<<<TEXT", "< <<TEXT")
+
+
 def build_prompt(name: str, text: str, fields: list[str] | None = None) -> str:
     if name not in TASKS:
         raise ValueError(f"unknown task {name!r}; choose from {sorted(TASKS)}")
     if name == "extract" and not fields:
         raise ValueError("extract needs --fields a,b,c")
-    return TASKS[name][0].format(text=text, fields=", ".join(fields or []))
+    return TASKS[name][0].format(text=frame_safe(text), fields=", ".join(fields or []))
 
 
 def validate(name: str, text: str, output: str, fields: list[str] | None = None) -> Result:

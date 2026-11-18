@@ -54,11 +54,15 @@ The older shell wrapper `scripts/run_flora.sh` still works for interactive use.
 | `scripts/build_model.sh` | Builds the Ollama model on a base model you choose |
 | `tests/` | Shell tests using a stub `ollama` (no model needed). CI runs them with shellcheck |
 
+## Hardening (from an independent review)
+No proxy and no redirects when talking to the model; a total time limit per request; memory and proposal files are read with size limits, never through symlinks or pipes; approval is atomic and writes exactly the text you were shown, once; proposal records are validated, not trusted; input text cannot close its own data block; bad settings and bad files give a clean error (exit code 2), never a crash.
+
 ## Limits (honest)
 - Small local models can ignore rules. Flora's constraints are **prompt-level guidance, not a security boundary**.
   Do not give it access to anything it should not be able to affect, and always review its output.
 - Quality depends on the base model; a 3B model is good for short, structured text jobs, not for hard reasoning.
 - The wrapper limits memory size and never executes memory text, but it cannot stop a model from being wrong.
+- A task check proves the *format* of an answer (for example, at most 3 bullets). It cannot prove the answer is true or that the model resisted a hidden instruction in the text; that is what `flora eval` samples.
 
 ## How I use it
 Flora handles small text jobs (short drafts, tidy-ups, extracting fields) next to larger agents in a home-lab setup
@@ -66,7 +70,7 @@ Flora handles small text jobs (short drafts, tidy-ups, extracting fields) next t
 
 ## Tests
 ```bash
-python3 -m unittest discover -s tests   # 24 tests; a stub server plays Ollama, no model needed
+python3 -m unittest discover -s tests   # 39 tests; a stub server plays Ollama, no model needed
 bash tests/test_run_flora.sh            # shell wrapper tests
 bin/flora eval                          # live check against your model (needs Ollama)
 ```
