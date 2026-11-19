@@ -21,6 +21,11 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def generate(cfg: Config, prompt: str, temperature: float | None = None) -> str:
+    return generate_stats(cfg, prompt, temperature)["text"]
+
+
+def generate_stats(cfg: Config, prompt: str, temperature: float | None = None) -> dict:
+    """Like generate, but also returns timing numbers from the server (for the benchmark)."""
     cfg.check_local()
     body = {"model": cfg.model, "prompt": prompt, "stream": False}
     if temperature is not None:
@@ -56,4 +61,10 @@ def generate(cfg: Config, prompt: str, temperature: float | None = None) -> str:
     text = data.get("response") if isinstance(data, dict) else None
     if not isinstance(text, str):
         raise FloraError("model server answer has no 'response' text")
-    return text.strip()
+
+    def num(key):
+        v = data.get(key)
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0 else 0
+
+    return {"text": text.strip(), "tokens": int(num("eval_count")), "eval_s": num("eval_duration") / 1e9,
+            "total_s": num("total_duration") / 1e9, "load_s": num("load_duration") / 1e9}

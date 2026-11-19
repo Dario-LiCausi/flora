@@ -124,6 +124,15 @@ def cmd_eval(cfg: Config, a) -> int:
     return 1 if failed else 0
 
 
+def cmd_bench(cfg: Config, a) -> int:
+    from . import bench
+    models = [m.strip() for m in a.models.split(",") if m.strip()]
+    if not models:
+        raise ValueError("give at least one model with --models a,b,c")
+    print(bench.run(cfg, models, Path(a.cases), a.repeats, Path(a.out) if a.out else None, a.label))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="flora", description="A small, controlled local LLM helper.")
     ap.add_argument("--version", action="version", version=f"flora {__version__}")
@@ -145,6 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
     q = m.add_parser("draft"); q.add_argument("--target", default="project"); q.add_argument("text", nargs="*")
     q = m.add_parser("approve"); q.add_argument("id"); q.add_argument("--yes", action="store_true")
     q = m.add_parser("reject"); q.add_argument("id")
+    p = sub.add_parser("bench", help="compare several models on the evaluation cases (pass rate, speed, memory, failure types)")
+    p.add_argument("--models", required=True, help="comma separated Ollama model names")
+    p.add_argument("--repeats", type=int, default=3, help="runs per case and model (default 3)")
+    p.add_argument("--label", default="local", help="a name for the test machine in the result file")
+    p.add_argument("--out", help="write the full results as JSON to this file")
+    p.add_argument("--cases", default=str(Path(__file__).resolve().parent.parent / "evals" / "cases.json"))
     p = sub.add_parser("eval", help="run the evaluation cases against the live model")
     p.add_argument("--cases", default=str(Path(__file__).resolve().parent.parent / "evals" / "cases.json"))
     return ap
@@ -162,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
         setattr(a, target, list(getattr(a, target)) + extra)
     try:
         cfg = Config.from_env()
-        return {"ask": cmd_ask, "task": cmd_task, "memory": cmd_memory, "eval": cmd_eval}[a.cmd](cfg, a)
+        return {"ask": cmd_ask, "task": cmd_task, "memory": cmd_memory, "eval": cmd_eval, "bench": cmd_bench}[a.cmd](cfg, a)
     except (client.FloraError, memory.MemoryError_, ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2

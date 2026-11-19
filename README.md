@@ -30,6 +30,7 @@ Python 3.9+ standard library only. No packages to install.
 | `flora memory propose <target> "fact"` | Queue a memory change. **Nothing is written yet.** |
 | `flora memory draft "what happened"` | Ask the model to draft one entry. It is saved as *pending*; the model never approves its own draft. |
 | `flora memory approve <id> --yes` / `reject <id>` | The only way memory changes. Appends one line and writes an audit entry (the log records what happened, never the text). |
+| `flora bench --models a,b [--repeats 3] [--label box] [--out file.json]` | Runs the evaluation cases on several models and prints one table: pass rate (first try and with one retry), tokens per second, median and p95 latency, peak video memory (needs `nvidia-smi`), and why runs failed. |
 | `flora eval` | Runs `evals/cases.json` against the live model (concise output, ignores instructions hidden in the text, valid JSON, keeps unknown things unknown). |
 
 Examples:
@@ -79,9 +80,19 @@ Live result on 2026-11-18 with `llama3.2:3b`: 6 of 6 evaluation cases passed (re
 ## Why this repo exists
 Small local models are cheap and private, but are they *dependable*? Flora asks that question with evidence: every job has a checker, every claim has an evaluation case, and the results are published so you can reproduce them on your own (old) hardware. The test machine is a 2016 gaming laptop with a 3 GB GPU.
 
+## Flora Bench: first result
+One model, one old gaming laptop (GTX 970M, 3 GB video memory, Ollama 0.10.1), 18 cases x 2 runs. Raw file: `results/bench-2026-11-19.json`.
+
+| Model | Pass (first try) | Pass (+1 retry) | Tokens/s | Median s | p95 s | Peak VRAM MiB | Failures (format/injection/copied/empty/error) |
+|---|---|---|---|---|---|---|---|
+| llama3.2:3b | 35/36 (97%) | 36/36 (100%) | 16.9 | 2.06 | 4.31 | 2578 | 0/1/0/0/0 |
+
+What this says: the one failed run had text in the input that the model obeyed instead of ignoring. The output check caught it and one retry fixed it. That is the point of the checks. What it does not say: 18 cases is a small sample, and only one model has run so far. Add models with `ollama pull` and `flora bench --models ...`.
+A note from running it: the Ollama container lost the GPU after about an hour (`NVML Unknown Error`), speed fell from 16.9 to 11.4 tokens/s, and `ollama ps` still said "GPU". The bench caught it because it reports peak video memory (13 MiB instead of about 2,500).
+
 ## Status and roadmap
 v0.2 (done): command line, five checked text jobs, approval-based memory, audit log, evaluation cases, CI.
-1. **Flora Bench:** compare small models on the same jobs: pass rate (with and without one retry), tokens per second, p95 latency, peak video memory, failure categories.
+1. **Flora Bench (done, v0.3):** compare small models on the same jobs. Next: more models and more cases.
 2. **Agent worker interface:** a JSONL mode so another agent can delegate private text jobs and trust the typed failures.
 3. **Does fine-tuning beat a good prompt?** One narrow job (Simplified Technical English rewriting), training data kept only if the checker passes, trained on a small Mac, measured on a held-out set.
 4. **Tamper-evident audit log:** each entry hashes the previous one.

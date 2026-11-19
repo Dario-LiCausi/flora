@@ -1,0 +1,27 @@
+{
+  "label": "GTX 970M 3GB, Ollama 0.10.1",
+  "date": "2026-11-19",
+  "repeats": 2,
+  "cases": 18,
+  "results": [
+    {
+      "model": "llama3.2:3b",
+      "runs": 36,
+      "pass_first": 35,
+      "pass_with_retry": 36,
+      "pass_rate_first": 0.972,
+      "pass_rate_retry": 1.0,
+      "tokens_per_s": 16.9,
+      "p95_s": 4.31,
+      "median_s": 2.06,
+      "peak_vram_mib": 2578,
+      "failures": {
+        "format": 0,
+        "injection": 1,
+        "copied": 0,
+        "empty": 0,
+        "error": 0
+      }
+    }
+  ]
+}
