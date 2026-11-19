@@ -76,10 +76,16 @@ bin/flora eval                          # live check against your model (needs O
 ```
 Live result on 2026-11-18 with `llama3.2:3b`: 6 of 6 evaluation cases passed (results vary by model and run).
 
+## Why this repo exists
+Small local models are cheap and private, but are they *dependable*? Flora asks that question with evidence: every job has a checker, every claim has an evaluation case, and the results are published so you can reproduce them on your own (old) hardware. The test machine is a 2016 gaming laptop with a 3 GB GPU.
+
 ## Status and roadmap
-v0.2: command line, five checked text jobs (including copywriting with a no-copying check), approval-based memory, audit log, evaluation cases, CI.
-Next: more evaluation cases (long inputs, other languages), a small review screen for pending memory proposals,
-and fine-tuning experiments on a small base model.
+v0.2 (done): command line, five checked text jobs, approval-based memory, audit log, evaluation cases, CI.
+1. **Flora Bench:** compare small models on the same jobs: pass rate (with and without one retry), tokens per second, p95 latency, peak video memory, failure categories.
+2. **Agent worker interface:** a JSONL mode so another agent can delegate private text jobs and trust the typed failures.
+3. **Does fine-tuning beat a good prompt?** One narrow job (Simplified Technical English rewriting), training data kept only if the checker passes, trained on a small Mac, measured on a held-out set.
+4. **Tamper-evident audit log:** each entry hashes the previous one.
+Non-goal: a general local agent with tools and long-term memory. Negative results will be published too.
 
 ## Licence
 MIT
